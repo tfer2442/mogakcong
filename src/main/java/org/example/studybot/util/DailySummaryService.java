@@ -47,7 +47,7 @@ public class DailySummaryService {
             return;
         }
 
-        // 로그 요약 생성 및 전송
+        // 로그 요약 생성 및 전송 (서버별명 기준)
         String summary = formatLogsSummed(logs, "어제");
         textChannel.sendMessage(summary).queue();
     }
@@ -56,6 +56,7 @@ public class DailySummaryService {
         return jda.getTextChannelsByName(channelName, true).stream().findFirst().orElse(null);
     }
 
+    // 🔹 nickName(서버별명) + 채널명 기준으로 머문 시간 합산
     private String formatLogsSummed(List<VoiceChannelLog> logs, String periodName) {
         if (logs.isEmpty()) {
             return periodName + " 기간 동안 기록이 없습니다.";
@@ -63,9 +64,12 @@ public class DailySummaryService {
 
         Map<String, Map<String, Long>> userChannelDurations = new HashMap<>();
         for (VoiceChannelLog log : logs) {
+            String serverNickName = log.getNickName();     // 서버별명
+            String channelName = log.getChannelName();
+
             userChannelDurations
-                .computeIfAbsent(log.getNickName(), k -> new HashMap<>())
-                .merge(log.getChannelName(), log.getDuration(), Long::sum);
+                .computeIfAbsent(serverNickName, k -> new HashMap<>())
+                .merge(channelName, log.getDuration(), Long::sum);
         }
 
         if (userChannelDurations.isEmpty()) {
@@ -73,12 +77,12 @@ public class DailySummaryService {
         }
 
         StringBuilder response = new StringBuilder(periodName + " 기록 요약:\n");
-        userChannelDurations.forEach((nickName, channelDurations) -> {
+        userChannelDurations.forEach((serverNickName, channelDurations) -> {
             channelDurations.forEach((channelName, totalDuration) -> {
                 String formattedDuration = formatDuration(totalDuration);
                 response.append(String.format(
                     "%s님이 `%s` 채널에서 %s 머물렀습니다.\n",
-                    nickName, channelName, formattedDuration
+                    serverNickName, channelName, formattedDuration
                 ));
             });
         });

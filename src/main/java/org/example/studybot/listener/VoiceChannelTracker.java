@@ -50,6 +50,7 @@ public class VoiceChannelTracker extends ListenerAdapter {
         TextChannel textChannel = (textChannels != null && !textChannels.isEmpty()) ? textChannels.get(0) : null;
 
         // 👤 닉네임/이름 처리 (여기서 null 절대 안 나게)
+        // 서버별명(길드 닉네임)을 우선 사용하고, 없으면 계정 이름 사용
         String displayName;
         if (member != null) {
             displayName = member.getEffectiveName();   // 닉네임 있으면 닉네임, 없으면 username
@@ -89,12 +90,14 @@ public class VoiceChannelTracker extends ListenerAdapter {
                 // DB 저장
                 VoiceChannelLog log = new VoiceChannelLog();
                 log.setUserId(userId);
-                log.setNickName(displayName);                // 닉네임 or username
+                // 🔹 서버별명 기준: nickName 에는 서버 닉네임(또는 표시 이름)
+                log.setNickName(displayName);
+                // 🔹 userName 은 항상 계정 이름으로 고정
+                log.setUserName(user.getName());
                 log.setChannelId(leftChannel.getIdLong());
                 log.setChannelName(leftChannel.getName());
                 log.setDuration(duration);
                 log.setRecordedAt(LocalDateTime.now());
-                log.setUserName(displayName);
 
                 repository.save(log);
 

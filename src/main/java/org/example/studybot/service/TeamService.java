@@ -51,23 +51,24 @@ public class TeamService {
         teamRepository.delete(team);
     }
 
+    // 🔹 팀원 추가는 쓰기 작업이므로 별도 @Transactional 부여
+    @Transactional
     public void putTeamMemberInTeam(PutTeamMemberDTO putTeamMemberDTO) {
         Team team = teamRepository.getById(putTeamMemberDTO.teamId());
 
-        putTeamMemberDTO.members().stream()
-            .map(member -> {
-                String discordId = member.getId();
-                String name = member.getUser().getName();
-                String nickName = member.getNickname();
+        putTeamMemberDTO.members().forEach(member -> {
+            String discordId = member.getId();
+            String name = member.getUser().getName();
+            String nickName = member.getNickname();
 
-                TeamMember teamMember = TeamMember.builder()
-                    .discordId(discordId)
-                    .nickName(nickName != null ? nickName : name)
-                    .build();
+            TeamMember teamMember = TeamMember.builder()
+                .discordId(discordId)
+                .nickName(nickName != null ? nickName : name)   // 서버별명 우선 저장
+                .build();
 
-                teamMember.setTeam(team);
-                return teamMemberRepository.save(teamMember);
-            });
+            teamMember.setTeam(team);
+            teamMemberRepository.save(teamMember);
+        });
     }
 
     public void deleteTeamMemberInTeam() {

@@ -28,9 +28,21 @@ public class RecordService {
     private TeamMemberRepository teamMemberRepository;
 
     public void handleJoin(Member member, VoiceChannel joined) {
+        if (member == null || joined == null) {
+            return;
+        }
+
         TeamMember teamMember = teamMemberRepository.getByDiscordId(member.getId());
+        if (teamMember == null) {
+            // 아직 팀원으로 등록되지 않은 사용자면 기록하지 않음
+            return;
+        }
 
         Channel channel = channelRepository.getByDiscordChannelId(joined.getId());
+        if (channel == null) {
+            // 관리 대상 채널이 아니면 기록하지 않음
+            return;
+        }
 
         Record record = new Record();
         record.setTeamMember(teamMember);

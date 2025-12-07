@@ -79,7 +79,7 @@ public class DailySummaryService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("📊 **").append(periodName).append(" 전체 공부 기록 요약**\n\n");
-        sb.append("🧑‍🤝‍🧑 사용자별 기록\n");
+        sb.append("🤝 사용자별 기록\n");
         sb.append("────────────────────────\n");
 
         userDurations.entrySet().stream()

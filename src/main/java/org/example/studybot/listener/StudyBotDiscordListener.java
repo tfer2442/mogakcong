@@ -44,14 +44,23 @@ public class StudyBotDiscordListener extends ListenerAdapter {
         TextChannel textChannel = event.getChannel().asTextChannel();
         Message message = event.getMessage();
 
+        // 봇이 보낸 메시지는 무시
         if (user.isBot())
             return;
 
         String content = message.getContentDisplay().trim();
 
         if (content.startsWith("!")) {
-            String nickname = member != null ? member.getNickname() : null;
-            String displayName = nickname != null ? nickname : user.getName();
+            // ✅ 닉네임/이름 처리 안전하게: null 방지
+            String displayName;
+            if (member != null) {
+                // 닉네임이 있으면 닉네임, 없으면 username 반환 (절대 null 아님)
+                displayName = member.getEffectiveName();
+            } else {
+                // DM 이거나 멤버 정보 못 가져온 경우
+                displayName = user.getName();
+            }
+
             String cmd = content.substring(1).trim();
 
             if (cmd.equals("명령어")) {
@@ -83,8 +92,13 @@ public class StudyBotDiscordListener extends ListenerAdapter {
             String selected = event.getValues().get(0);
 
             Member member = event.getMember();
-            String nickname = member != null ? member.getNickname() : null;
-            String displayName = nickname != null ? nickname : event.getUser().getName();
+            // ✅ 여기서도 동일하게 null-safe 이름 처리
+            String displayName;
+            if (member != null) {
+                displayName = member.getEffectiveName();
+            } else {
+                displayName = event.getUser().getName();
+            }
 
             String returnMessage = commandHandler.handle(selected, displayName, event.getUser().getName());
 

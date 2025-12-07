@@ -104,7 +104,7 @@ public class VoiceChannelTracker extends ListenerAdapter {
                 // 텍스트 채널에 메시지 출력
                 if (textChannel != null) {
                     StringBuilder sb = new StringBuilder();
-                    sb.append("\uD83D\uDD34")
+                    sb.append("\uD83D\uDD34 ")
                         .append(displayName)
                         .append("님이 `").append(leftChannel.getName()).append("` 채널에서 퇴장했습니다.\n")
                         .append("머문 시간: ");

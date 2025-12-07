@@ -157,18 +157,19 @@ public class RecordManager {
 
             String emoji = getEmojiForUser(user);
             String body = String.format(
-                "%s %s님\n⏱ 총 머문 시간: **%s**",
+                "• %s %s님 — %s\n",
                 emoji,
                 user,
                 prettyDuration(totalSeconds)
             );
+
             return header + body;
         }
 
         // 🔹 전체 기록 (또는 여러 명인 경우)
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("📊 **%s 전체 공부 기록 요약**\n\n", periodName));
-        sb.append("🧑‍🤝‍🧑 사용자별 기록\n");
+        sb.append("‍🤝‍사용자별 기록\n");
         sb.append("────────────────────────\n");
 
         userDurations.entrySet().stream()
@@ -179,7 +180,7 @@ public class RecordManager {
                 String emoji = getEmojiForUser(user);
 
                 sb.append(String.format(
-                    "• %s %s — %s\n",
+                    "• %s %s님 — %s\n",
                     emoji,
                     user,
                     prettyDuration(totalSeconds)

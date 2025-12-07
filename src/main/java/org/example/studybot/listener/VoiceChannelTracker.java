@@ -89,12 +89,12 @@ public class VoiceChannelTracker extends ListenerAdapter {
                 // DB 저장
                 VoiceChannelLog log = new VoiceChannelLog();
                 log.setUserId(userId);
-                log.setNickName(displayName);                // ← nickName 대신 displayName 사용
+                log.setNickName(displayName);                // 닉네임 or username
                 log.setChannelId(leftChannel.getIdLong());
                 log.setChannelName(leftChannel.getName());
                 log.setDuration(duration);
                 log.setRecordedAt(LocalDateTime.now());
-                log.setUserName(user.getName());             // 원래 디스코드 username
+                log.setUserName(displayName);
 
                 repository.save(log);
 

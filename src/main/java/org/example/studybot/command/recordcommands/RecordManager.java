@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.time.temporal.WeekFields;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -37,6 +38,9 @@ public class RecordManager {
     };
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd");
+
+    // 월요일 기준 주차 계산용
+    private static final WeekFields WEEK_FIELDS = WeekFields.of(DayOfWeek.MONDAY, 1);
 
     // ===================== 공개 메서드 =====================
 
@@ -136,23 +140,21 @@ public class RecordManager {
                 Collectors.summingLong(VoiceChannelLog::getDuration)
             ));
 
+        StringBuilder sb = new StringBuilder();
+
         // 개인 조회 + 1명만 있는 경우
         if (userNameOpt.isPresent() && userDurations.size() == 1) {
             String user = userDurations.keySet().iterator().next();
             long totalSeconds = userDurations.get(user);
 
-            String header = String.format("📊 **%s 내 공부 기록 요약**\n\n", periodLabel);
-            String body = String.format(
-                "%s님 — %s",
-                user,
-                prettyDuration(totalSeconds)
-            );
-            return header + body;
+            sb.append(String.format("📊 **%s 내 공부 기록 요약**\n\n", periodLabel));
+            sb.append("> **").append(user).append("**\n");
+            sb.append("> 총 공부 시간: ").append(prettyDuration(totalSeconds)).append("\n");
+
+            return sb.toString();
         }
 
-        // 전체 조회: 사람별 섹션으로 나눠서 출력
-        StringBuilder sb = new StringBuilder();
-
+        // 전체 조회: 사람별 인용구 카드 스타일
         sb.append(String.format("📊 **%s 전체 공부 기록 요약**\n\n", periodLabel));
 
         userDurations.entrySet().stream()
@@ -161,12 +163,10 @@ public class RecordManager {
                 String user = entry.getKey();
                 long totalSeconds = entry.getValue();
 
-                sb.append("────────────────────────\n");
-                sb.append(String.format("👤 %s\n", user));
-                sb.append(String.format("총 공부 시간: %s\n\n", prettyDuration(totalSeconds)));
+                sb.append("> **").append(user).append("**\n");
+                sb.append("> 총 공부 시간: ").append(prettyDuration(totalSeconds)).append("\n\n");
             });
 
-        sb.append("────────────────────────");
         return sb.toString();
     }
 
@@ -226,8 +226,7 @@ public class RecordManager {
                 long total = entry.getValue();
                 Map<DayOfWeek, Long> days = userDayDurations.get(user);
 
-                sb.append("────────────────────────\n");
-                sb.append(String.format("👤 %s\n", user));
+                sb.append("> **").append(user).append("**\n");
 
                 // 월~일 순서대로 출력 (해당 요일 기록 있는 경우만)
                 for (DayOfWeek dow : WEEK_ORDER) {
@@ -236,21 +235,22 @@ public class RecordManager {
                         continue;
                     }
 
-                    sb.append(String.format(
-                        "  - %s: %s\n",
-                        dayLabel(dow),
-                        prettyDuration(sec)
-                    ));
+                    sb.append("> - ")
+                        .append(dayLabel(dow))
+                        .append(": ")
+                        .append(prettyDuration(sec))
+                        .append("\n");
                 }
 
-                sb.append(String.format("\n합계: %s\n\n", prettyDuration(total)));
+                sb.append("> **합계: ")
+                    .append(prettyDuration(total))
+                    .append("**\n\n");
             });
 
-        sb.append("────────────────────────");
         return sb.toString();
     }
 
-    // ===================== 월간 요약 (주차별) =====================
+    // ===================== 월간 요약 (월요일 기준 주차별) =====================
 
     private String formatMonthlySummary(List<VoiceChannelLog> logs, String periodLabel,
         Optional<String> userNameOpt, List<LocalDateTime> range) {
@@ -265,8 +265,7 @@ public class RecordManager {
             String user = resolveUserName(log);
 
             LocalDate date = log.getRecordedAt().toLocalDate();
-            int dayOfMonth = date.getDayOfMonth();
-            int weekIndex = (dayOfMonth - 1) / 7 + 1; // 1~7:1주차, 8~14:2주차 ...
+            int weekIndex = date.get(WEEK_FIELDS.weekOfMonth()); // 월요일 기준 주차
 
             userWeekDurations
                 .computeIfAbsent(user, k -> new HashMap<>())
@@ -308,8 +307,7 @@ public class RecordManager {
                 long total = entry.getValue();
                 Map<Integer, Long> weeks = userWeekDurations.get(user);
 
-                sb.append("────────────────────────\n");
-                sb.append(String.format("👤 %s\n", user));
+                sb.append("> **").append(user).append("**\n");
 
                 weeks.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
@@ -317,18 +315,19 @@ public class RecordManager {
                         int weekIndex = weekEntry.getKey();
                         long sec = weekEntry.getValue();
 
-                        sb.append(String.format(
-                            "  - %d주차: %s\n",
-                            weekIndex,
-                            prettyDuration(sec)
-                        ));
+                        sb.append("> - ")
+                            .append(weekIndex)
+                            .append("주차: ")
+                            .append(prettyDuration(sec))
+                            .append("\n");
                     });
 
-                sb.append(String.format("\n합계: %s\n\n", prettyDuration(total)));
+                sb.append("> **합계: ")
+                    .append(prettyDuration(total))
+                    .append("**\n\n");
             });
 
         // 월간에서는 전체 합계(모든 사람 합쳐서)는 별도로 출력하지 않음
-        sb.append("────────────────────────");
         return sb.toString();
     }
 

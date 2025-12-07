@@ -148,13 +148,15 @@ public class RecordManager {
             long totalSeconds = userDurations.get(user);
 
             sb.append(String.format("📊 **%s 내 공부 기록 요약**\n\n", periodLabel));
-            sb.append("> **").append(user).append("**\n");
-            sb.append("> 총 공부 시간: ").append(prettyDuration(totalSeconds)).append("\n");
+            sb.append(user).append("\n");
+            sb.append("총 공부 시간: ")
+                .append(prettyDuration(totalSeconds))
+                .append("\n");
 
             return sb.toString();
         }
 
-        // 전체 조회: 사람별 인용구 카드 스타일
+        // 전체 조회: 사람별 섹션으로 나눠서 출력
         sb.append(String.format("📊 **%s 전체 공부 기록 요약**\n\n", periodLabel));
 
         userDurations.entrySet().stream()
@@ -163,10 +165,14 @@ public class RecordManager {
                 String user = entry.getKey();
                 long totalSeconds = entry.getValue();
 
-                sb.append("> **").append(user).append("**\n");
-                sb.append("> 총 공부 시간: ").append(prettyDuration(totalSeconds)).append("\n\n");
+                sb.append("────────────────────────\n");
+                sb.append(user).append("\n");
+                sb.append("총 공부 시간: ")
+                    .append(prettyDuration(totalSeconds))
+                    .append("\n\n");
             });
 
+        sb.append("────────────────────────");
         return sb.toString();
     }
 
@@ -226,7 +232,8 @@ public class RecordManager {
                 long total = entry.getValue();
                 Map<DayOfWeek, Long> days = userDayDurations.get(user);
 
-                sb.append("> **").append(user).append("**\n");
+                sb.append("────────────────────────\n");
+                sb.append(user).append("\n");
 
                 // 월~일 순서대로 출력 (해당 요일 기록 있는 경우만)
                 for (DayOfWeek dow : WEEK_ORDER) {
@@ -235,18 +242,19 @@ public class RecordManager {
                         continue;
                     }
 
-                    sb.append("> - ")
+                    sb.append("  - ")
                         .append(dayLabel(dow))
                         .append(": ")
                         .append(prettyDuration(sec))
                         .append("\n");
                 }
 
-                sb.append("> **합계: ")
+                sb.append("\n합계: ")
                     .append(prettyDuration(total))
-                    .append("**\n\n");
+                    .append("\n\n");
             });
 
+        sb.append("────────────────────────");
         return sb.toString();
     }
 
@@ -307,7 +315,8 @@ public class RecordManager {
                 long total = entry.getValue();
                 Map<Integer, Long> weeks = userWeekDurations.get(user);
 
-                sb.append("> **").append(user).append("**\n");
+                sb.append("────────────────────────\n");
+                sb.append(user).append("\n");
 
                 weeks.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
@@ -315,19 +324,20 @@ public class RecordManager {
                         int weekIndex = weekEntry.getKey();
                         long sec = weekEntry.getValue();
 
-                        sb.append("> - ")
+                        sb.append("  - ")
                             .append(weekIndex)
                             .append("주차: ")
                             .append(prettyDuration(sec))
                             .append("\n");
                     });
 
-                sb.append("> **합계: ")
+                sb.append("\n합계: ")
                     .append(prettyDuration(total))
-                    .append("**\n\n");
+                    .append("\n\n");
             });
 
         // 월간에서는 전체 합계(모든 사람 합쳐서)는 별도로 출력하지 않음
+        sb.append("────────────────────────");
         return sb.toString();
     }
 

@@ -1,15 +1,15 @@
 package org.example.studybot.util;
 
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.example.studybot.voicechannel.VoiceChannelLog;
 import org.example.studybot.voicechannel.VoiceChannelLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,79 +27,105 @@ public class DailySummaryService {
     @Autowired
     private TextChannelProperties textChannelProperties;
 
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd");
+
+    /**
+     * LogScheduler 에서 매일 0시 1분에 호출
+     * 어제 하루(00:00 ~ 23:59:59) 기록을 집계해서
+     * RecordManager 의 "전체 일간 기록" 과 같은 형식의 문자열로 전송
+     */
     public void generateAndSendDailySummary() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
 
-        // 어제 날짜의 시작과 끝 계산
         LocalDateTime startOfDay = yesterday.atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1).minusSeconds(1);
 
         // Discord 채널 가져오기
         TextChannel textChannel = findTextChannel(textChannelProperties.getTargetChannelName());
         if (textChannel == null) {
-            System.err.println("채널을 찾을 수 없습니다.");
+            System.err.println("[DailySummaryService] 채널을 찾을 수 없습니다. name=" +
+                textChannelProperties.getTargetChannelName());
             return;
         }
 
         // 어제의 로그 가져오기
         List<VoiceChannelLog> logs = repository.findAllLogsBetween(startOfDay, endOfDay);
-        if (logs.isEmpty()) {
-            textChannel.sendMessage("⚠️ 어제의 기록이 없습니다.").queue();
-            return;
-        }
 
-        // 로그 요약 생성 및 전송 (서버별명 기준, 전체 요약)
-        String summary = formatLogsSummed(logs, "어제");
-        textChannel.sendMessage(summary).queue();
-    }
+        // 메시지 포맷: RecordManager 의 전체 일간 기록과 동일한 스타일
+        String message = buildDailySummaryMessage(logs, yesterday);
 
-    private TextChannel findTextChannel(String channelName) {
-        return jda.getTextChannelsByName(channelName, true).stream().findFirst().orElse(null);
+        textChannel.sendMessage(message)
+            .queue(
+                success -> System.out.println("[DailySummaryService] 어제 일간 요약 전송 완료"),
+                error -> System.err.println("[DailySummaryService] 어제 일간 요약 전송 실패: " + error.getMessage())
+            );
     }
 
     /**
-     * 어제 로그들을 "유저별 총합"으로 모아서
-     * 📊 **어제 전체 공부 기록 요약**
-     * 이런 형태의 문자열로 만들어 줌.
+     * 어제 날짜 기준 전체 일간 기록 메시지 생성
+     * RecordManager.formatDailySummary(...) 의 "전체 조회" 스타일과 동일하게 맞춤
      */
-    private String formatLogsSummed(List<VoiceChannelLog> logs, String periodName) {
-        if (logs.isEmpty()) {
-            return "⚠️ " + periodName + " 기록이 없습니다.";
+    private String buildDailySummaryMessage(List<VoiceChannelLog> logs, LocalDate targetDate) {
+        String periodLabel = targetDate.format(DATE_FMT); // 예: 12/08
+
+        if (logs == null || logs.isEmpty()) {
+            // RecordManager.getLogsForSpecificDate 와 유사한 스타일
+            return periodLabel + "에 기록이 없습니다.";
         }
 
-        // 닉네임 기준으로 합산 (없으면 userName으로 fallback)
+        // userName → totalSeconds
         Map<String, Long> userDurations = new HashMap<>();
-        for (VoiceChannelLog log : logs) {
-            String name = Optional.ofNullable(log.getNickName())
-                .filter(s -> !s.isBlank())
-                .orElse(log.getUserName());
 
-            userDurations.merge(name, log.getDuration(), Long::sum);
+        for (VoiceChannelLog log : logs) {
+            String user = resolveUserName(log);
+            long duration = Optional.ofNullable(log.getDuration()).orElse(0L);
+
+            userDurations.merge(user, duration, Long::sum);
+        }
+
+        if (userDurations.isEmpty()) {
+            return periodLabel + "에 기록이 없습니다.";
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("📊 **").append(periodName).append(" 전체 공부 기록 요약**\n\n");
-        sb.append("🤝 사용자별 기록\n");
-        sb.append("────────────────────────\n");
 
+        // 헤더: 📊 **{MM/dd} 전체 공부 기록 요약**
+        sb.append(String.format("📊 **%s 전체 공부 기록 요약**\n\n", periodLabel));
+
+        // 총 공부 시간 기준 내림차순 정렬
         userDurations.entrySet().stream()
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(entry -> {
                 String user = entry.getKey();
                 long totalSeconds = entry.getValue();
-                sb.append("• ")
-                    .append(user)
-                    .append(" — ")
+
+                sb.append("────────────────────────\n");
+                sb.append("**").append(user).append("**\n");
+                sb.append("총 공부 시간: ")
                     .append(formatDuration(totalSeconds))
-                    .append("\n");
+                    .append("\n\n");
             });
 
         sb.append("────────────────────────");
-        // 📌 "전체 합계" 줄은 넣지 않음 (요청사항 반영)
 
         return sb.toString();
     }
 
+    /**
+     * 서버별명(nickName) 이 있으면 그걸 쓰고,
+     * 없거나 공백이면 userName 사용
+     * (RecordManager.resolveUserName 과 동일한 로직)
+     */
+    private String resolveUserName(VoiceChannelLog log) {
+        return Optional.ofNullable(log.getNickName())
+            .filter(s -> !s.isBlank())
+            .orElse(log.getUserName());
+    }
+
+    /**
+     * 초 → "X시간 Y분 Z초" 포맷
+     * (RecordManager.prettyDuration, 기존 formatDuration 과 동일 스타일)
+     */
     private String formatDuration(long seconds) {
         long hours = seconds / 3600;
         long minutes = (seconds % 3600) / 60;
@@ -112,5 +138,22 @@ public class DailySummaryService {
             return String.format("%d분 %d초", minutes, secs);
         }
         return String.format("%d초", secs);
+    }
+
+    /**
+     * 채널 이름(or ID) 으로 TextChannel 찾는 유틸
+     * 기존 DailySummaryService 에 있던 패턴 그대로 재구현
+     */
+    private TextChannel findTextChannel(String nameOrId) {
+        // ID 로 먼저 시도
+        TextChannel byId = jda.getTextChannelById(nameOrId);
+        if (byId != null) {
+            return byId;
+        }
+
+        // 이름으로 검색 (여러 개면 첫 번째)
+        return jda.getTextChannelsByName(nameOrId, true).stream()
+            .findFirst()
+            .orElse(null);
     }
 }

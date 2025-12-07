@@ -302,7 +302,7 @@ public class RecordManager {
                 Map<Integer, Long> weeks = userWeekDurations.get(user);
 
                 sb.append("────────────────────────\n");
-                sb.append("**").append(user).append("**\n");
+                sb.append("**").append(user).append("**\n\n");
 
                 weeks.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())

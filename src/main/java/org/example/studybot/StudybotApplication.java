@@ -26,7 +26,7 @@ public class StudybotApplication {
         JDA jda = JDABuilder.createDefault(discordBotToken)
             .setActivity(Activity.playing("메시지 기다리는 중!"))
             .setMaxReconnectDelay(32)
-            .enableIntents(GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_VOICE_STATES) // 필요한 인텐트 모두 활성화
+            .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_VOICE_STATES) // 필요한 인텐트 모두 활성화
             .addEventListeners(
                 context.getBean(StudyBotDiscordListener.class),
                 context.getBean(VoiceChannelTracker.class)

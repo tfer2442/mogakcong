@@ -20,4 +20,3 @@ public class Stupid implements TextCommands {
         return displayName + " 바보멍청이";
     }
 }
-

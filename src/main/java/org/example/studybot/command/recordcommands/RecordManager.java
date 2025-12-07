@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 import org.example.studybot.voicechannel.VoiceChannelLog;
@@ -26,18 +25,6 @@ public class RecordManager {
     @Autowired
     private VoiceChannelLogRepository repository;
 
-    // ===================== 이모지 관련 설정 =====================
-
-    // 자동 배정용 이모지 풀
-    private static final List<String> EMOJI_POOL = List.of(
-        "🐳", "🐰", "🐯", "🐧", "🦁", "🐻", "🐶", "🐱", "🦊", "🐸"
-    );
-
-    // 자동 배정된 유저 → 이모지 저장 (봇이 켜져 있는 동안 유지)
-    private static final Map<String, String> AUTO_ASSIGNED = new HashMap<>();
-
-    private final Random random = new Random();
-
     // 요일 출력 순서 (월~일)
     private static final DayOfWeek[] WEEK_ORDER = {
         DayOfWeek.MONDAY,
@@ -48,6 +35,8 @@ public class RecordManager {
         DayOfWeek.SATURDAY,
         DayOfWeek.SUNDAY
     };
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd");
 
     // ===================== 공개 메서드 =====================
 
@@ -95,10 +84,10 @@ public class RecordManager {
 
         List<VoiceChannelLog> logs = repository.findAllLogsBetween(startOfDay, endOfDay);
         if (logs.isEmpty()) {
-            return targetDate.format(DateTimeFormatter.ofPattern("MM/dd")) + "에 기록이 없습니다.";
+            return targetDate.format(DATE_FMT) + "에 기록이 없습니다.";
         }
 
-        String label = targetDate.format(DateTimeFormatter.ofPattern("MM/dd"));
+        String label = targetDate.format(DATE_FMT);
         return formatDailySummary(logs, label, Optional.empty());
     }
 
@@ -131,9 +120,9 @@ public class RecordManager {
 
         // 3) 기간 타입에 따라 다른 포맷 적용
         if ("주간".equals(label)) {
-            return formatWeeklySummary(logs, label, userNameOpt);
+            return formatWeeklySummary(logs, label, userNameOpt, range);
         } else if ("월간".equals(label)) {
-            return formatMonthlySummary(logs, label, userNameOpt);
+            return formatMonthlySummary(logs, label, userNameOpt, range);
         } else {
             // 일간 / 기타
             return formatDailySummary(logs, label, userNameOpt);
@@ -160,22 +149,18 @@ public class RecordManager {
             String user = userDurations.keySet().iterator().next();
             long totalSeconds = userDurations.get(user);
 
-            String emoji = getEmojiForUser(user);
-
             String header = String.format("📊 **%s 내 공부 기록 요약**\n\n", periodName);
             String body = String.format(
-                "%s %s님 — %s",
-                emoji,
+                "%s님 — %s",
                 user,
                 prettyDuration(totalSeconds)
             );
             return header + body;
         }
 
-        // 전체 조회
+        // 전체 조회: 사용자별 기록
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("📊 **%s 전체 공부 기록 요약**\n\n", periodName));
-        sb.append("🧑‍🤝‍🧑 사용자별 기록\n");
         sb.append("────────────────────────\n");
 
         userDurations.entrySet().stream()
@@ -183,11 +168,9 @@ public class RecordManager {
             .forEach(entry -> {
                 String user = entry.getKey();
                 long totalSeconds = entry.getValue();
-                String emoji = getEmojiForUser(user);
 
                 sb.append(String.format(
-                    "• %s %s님 — %s\n",
-                    emoji,
+                    "• %s님 — %s\n",
                     user,
                     prettyDuration(totalSeconds)
                 ));
@@ -199,7 +182,8 @@ public class RecordManager {
 
     // ===================== 주간 요약 (요일별 + 합계) =====================
 
-    private String formatWeeklySummary(List<VoiceChannelLog> logs, String periodName, Optional<String> userNameOpt) {
+    private String formatWeeklySummary(List<VoiceChannelLog> logs, String periodName, Optional<String> userNameOpt,
+        List<LocalDateTime> range) {
         if (logs.isEmpty()) {
             return "⚠️ " + periodName + " 기간 동안 기록이 없습니다.";
         }
@@ -237,9 +221,15 @@ public class RecordManager {
 
         boolean personal = userNameOpt.isPresent() && userTotals.size() == 1;
 
+        // 기준 날짜 표시 (range 기반)
+        LocalDate startDate = range.get(0).toLocalDate();
+        LocalDate endDate = range.get(1).toLocalDate();
+        String dateRange = String.format("기준: %s ~ %s",
+            startDate.format(DATE_FMT), endDate.format(DATE_FMT));
+
         String title = personal
-            ? "📊 **주간 내 공부 기록 요약**\n\n"
-            : "📊 **주간 전체 공부 기록 요약**\n\n";
+            ? "📊 **주간 내 공부 기록 요약**\n" + dateRange + "\n\n"
+            : "📊 **주간 전체 공부 기록 요약**\n" + dateRange + "\n\n";
 
         StringBuilder sb = new StringBuilder(title);
 
@@ -251,9 +241,7 @@ public class RecordManager {
                 long total = entry.getValue();
                 Map<DayOfWeek, Long> days = userDayDurations.get(user);
 
-                String emoji = getEmojiForUser(user);
-
-                sb.append(String.format("%s %s님\n", emoji, user));
+                sb.append(String.format("%s님\n", user));
 
                 // 월~일 순서대로 출력 (해당 요일 기록 있는 경우만)
                 for (DayOfWeek dow : WEEK_ORDER) {
@@ -267,15 +255,18 @@ public class RecordManager {
                     ));
                 }
 
-                sb.append(String.format("  ➕ 합계: %s\n\n", prettyDuration(total)));
+                sb.append(String.format("  합계: %s\n\n", prettyDuration(total)));
             });
+
+        sb.append(String.format("📌 전체 합계: %s", prettyDuration(grandTotal)));
 
         return sb.toString();
     }
 
     // ===================== 월간 요약 (주차별 + 합계) =====================
 
-    private String formatMonthlySummary(List<VoiceChannelLog> logs, String periodName, Optional<String> userNameOpt) {
+    private String formatMonthlySummary(List<VoiceChannelLog> logs, String periodName,
+        Optional<String> userNameOpt, List<LocalDateTime> range) {
         if (logs.isEmpty()) {
             return "⚠️ " + periodName + " 기간 동안 기록이 없습니다.";
         }
@@ -303,20 +294,24 @@ public class RecordManager {
 
         // 사용자별 총합
         Map<String, Long> userTotals = new HashMap<>();
-        long grandTotal = 0L;
         for (Map.Entry<String, Map<Integer, Long>> entry : userWeekDurations.entrySet()) {
             long sum = entry.getValue().values().stream()
                 .mapToLong(Long::longValue)
                 .sum();
             userTotals.put(entry.getKey(), sum);
-            grandTotal += sum;
         }
 
         boolean personal = userNameOpt.isPresent() && userTotals.size() == 1;
 
+        // 기준 날짜 표시 (월 전체)
+        LocalDate startDate = range.get(0).toLocalDate();
+        LocalDate endDate = range.get(1).toLocalDate();
+        String dateRange = String.format("기준: %s ~ %s",
+            startDate.format(DATE_FMT), endDate.format(DATE_FMT));
+
         String title = personal
-            ? "📊 **월간 내 공부 기록 요약**\n\n"
-            : "📊 **월간 전체 공부 기록 요약**\n\n";
+            ? "📊 **월간 내 공부 기록 요약**\n" + dateRange + "\n\n"
+            : "📊 **월간 전체 공부 기록 요약**\n" + dateRange + "\n\n";
 
         StringBuilder sb = new StringBuilder(title);
 
@@ -328,9 +323,7 @@ public class RecordManager {
                 long total = entry.getValue();
                 Map<Integer, Long> weeks = userWeekDurations.get(user);
 
-                String emoji = getEmojiForUser(user);
-
-                sb.append(String.format("%s %s님\n", emoji, user));
+                sb.append(String.format("%s님\n", user));
 
                 weeks.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
@@ -344,8 +337,10 @@ public class RecordManager {
                         ));
                     });
 
-                sb.append(String.format("  ➕ 합계: %s\n\n", prettyDuration(total)));
+                sb.append(String.format("  합계: %s\n\n", prettyDuration(total)));
             });
+
+        // 📌 월간에서는 전체 합계 출력 X (요청 반영)
 
         return sb.toString();
     }
@@ -367,18 +362,6 @@ public class RecordManager {
             return String.format("%d분 %d초", minutes, seconds);
         }
         return String.format("%d초", seconds);
-    }
-
-    // 사용자 이모지 배정
-    private String getEmojiForUser(String user) {
-        if (AUTO_ASSIGNED.containsKey(user)) {
-            return AUTO_ASSIGNED.get(user);
-        }
-
-        String newEmoji = EMOJI_POOL.get(random.nextInt(EMOJI_POOL.size()));
-        AUTO_ASSIGNED.put(user, newEmoji);
-
-        return newEmoji;
     }
 
     // 요일 한글 라벨

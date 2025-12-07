@@ -18,19 +18,34 @@ repositories {
 }
 
 dependencies {
+    // 기본 부트 기능 (로깅 등)
     implementation 'org.springframework.boot:spring-boot-starter'
+
+    // JPA + Hibernate + jakarta.persistence
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // ✅ MySQL JDBC 드라이버 (버전은 부트가 알아서 관리)
+    implementation 'com.mysql:mysql-connector-j'
+
+    // (필요 없다면 H2는 과감히 제거해도 됨)
+    // runtimeOnly 'com.h2database:h2'
+
+    // 디스코드 JDA
+    implementation 'net.dv8tion:JDA:5.0.0-beta.5'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Devtools (선택)
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    runtimeOnly 'com.h2database:h2'
+
+    // 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    implementation 'net.dv8tion:JDA:5.0.0-beta.5'
-    annotationProcessor 'org.projectlombok:lombok'
-    compileOnly 'org.projectlombok:lombok'
-    runtimeOnly 'com.mysql:mysql-connector-j'
-    implementation 'javax.persistence:javax.persistence-api:2.2'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 }
 
+// JUnit Platform 사용
 tasks.named('test') {
     useJUnitPlatform()
 }

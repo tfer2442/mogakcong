@@ -97,17 +97,12 @@ public class RecordManager {
 
     // ===================== 메인 포맷팅 로직 =====================
 
-    /**
-     * 기간(label, range) + (옵션) 사용자이름 기준으로 로그를 조회하고 포맷팅
-     */
     private String formatLogsByRange(String periodLabel, List<LocalDateTime> range, Optional<String> userNameOpt) {
         LocalDateTime start = range.get(0);
         LocalDateTime end = range.get(1);
 
-        // 1) 우선 해당 기간의 전체 로그를 가져온다.
         List<VoiceChannelLog> logs = repository.findAllLogsBetween(start, end);
 
-        // 2) userNameOpt 가 들어온 경우, "서버별명" 기준으로 필터링
         if (userNameOpt.isPresent()) {
             String targetName = userNameOpt.get();
 
@@ -116,13 +111,11 @@ public class RecordManager {
                 .collect(Collectors.toList());
         }
 
-        // 3) 기간 타입에 따라 다른 포맷 적용
         if ("주간".equals(periodLabel)) {
             return formatWeeklySummary(logs, periodLabel, userNameOpt, range);
         } else if ("월간".equals(periodLabel)) {
             return formatMonthlySummary(logs, periodLabel, userNameOpt, range);
         } else {
-            // 일간 / 기타
             return formatDailySummary(logs, periodLabel, userNameOpt);
         }
     }
@@ -148,7 +141,7 @@ public class RecordManager {
             long totalSeconds = userDurations.get(user);
 
             sb.append(String.format("📊 **%s 내 공부 기록 요약**\n\n", periodLabel));
-            sb.append(user).append("\n");
+            sb.append("**").append(user).append("**\n");
             sb.append("총 공부 시간: ")
                 .append(prettyDuration(totalSeconds))
                 .append("\n");
@@ -156,7 +149,7 @@ public class RecordManager {
             return sb.toString();
         }
 
-        // 전체 조회: 사람별 섹션으로 나눠서 출력
+        // 전체 조회: 사람별 섹션
         sb.append(String.format("📊 **%s 전체 공부 기록 요약**\n\n", periodLabel));
 
         userDurations.entrySet().stream()
@@ -166,7 +159,7 @@ public class RecordManager {
                 long totalSeconds = entry.getValue();
 
                 sb.append("────────────────────────\n");
-                sb.append(user).append("\n");
+                sb.append("**").append(user).append("**\n");
                 sb.append("총 공부 시간: ")
                     .append(prettyDuration(totalSeconds))
                     .append("\n\n");
@@ -201,7 +194,6 @@ public class RecordManager {
             return "⚠️ " + periodLabel + " 기간 동안 기록이 없습니다.";
         }
 
-        // 사용자별 총합
         Map<String, Long> userTotals = new HashMap<>();
         for (Map.Entry<String, Map<DayOfWeek, Long>> entry : userDayDurations.entrySet()) {
             long sum = entry.getValue().values().stream()
@@ -212,7 +204,6 @@ public class RecordManager {
 
         boolean personal = userNameOpt.isPresent() && userTotals.size() == 1;
 
-        // 기준 날짜 표시 (range 기반)
         LocalDate startDate = range.get(0).toLocalDate();
         LocalDate endDate = range.get(1).toLocalDate();
         String dateRange = String.format("기준: %s ~ %s",
@@ -224,7 +215,6 @@ public class RecordManager {
 
         StringBuilder sb = new StringBuilder(title);
 
-        // 사용자 정렬 (총합 내림차순)
         userTotals.entrySet().stream()
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(entry -> {
@@ -233,9 +223,8 @@ public class RecordManager {
                 Map<DayOfWeek, Long> days = userDayDurations.get(user);
 
                 sb.append("────────────────────────\n");
-                sb.append(user).append("\n");
+                sb.append("**").append(user).append("**\n");
 
-                // 월~일 순서대로 출력 (해당 요일 기록 있는 경우만)
                 for (DayOfWeek dow : WEEK_ORDER) {
                     Long sec = days.get(dow);
                     if (sec == null || sec == 0L) {
@@ -284,7 +273,6 @@ public class RecordManager {
             return "⚠️ " + periodLabel + " 기간 동안 기록이 없습니다.";
         }
 
-        // 사용자별 총합
         Map<String, Long> userTotals = new HashMap<>();
         for (Map.Entry<String, Map<Integer, Long>> entry : userWeekDurations.entrySet()) {
             long sum = entry.getValue().values().stream()
@@ -295,7 +283,6 @@ public class RecordManager {
 
         boolean personal = userNameOpt.isPresent() && userTotals.size() == 1;
 
-        // 기준 날짜 표시 (월 전체)
         LocalDate startDate = range.get(0).toLocalDate();
         LocalDate endDate = range.get(1).toLocalDate();
         String dateRange = String.format("기준: %s ~ %s",
@@ -307,7 +294,6 @@ public class RecordManager {
 
         StringBuilder sb = new StringBuilder(title);
 
-        // 사용자 정렬 (총합 내림차순)
         userTotals.entrySet().stream()
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(entry -> {
@@ -316,7 +302,7 @@ public class RecordManager {
                 Map<Integer, Long> weeks = userWeekDurations.get(user);
 
                 sb.append("────────────────────────\n");
-                sb.append(user).append("\n");
+                sb.append("**").append(user).append("**\n");
 
                 weeks.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
@@ -324,7 +310,8 @@ public class RecordManager {
                         int weekIndex = weekEntry.getKey();
                         long sec = weekEntry.getValue();
 
-                        sb.append("  - ")
+                        // 여기서 마크다운 리스트 대신 그냥 텍스트 bullet 사용
+                        sb.append("• ")
                             .append(weekIndex)
                             .append("주차: ")
                             .append(prettyDuration(sec))
@@ -336,26 +323,18 @@ public class RecordManager {
                     .append("\n\n");
             });
 
-        // 월간에서는 전체 합계(모든 사람 합쳐서)는 별도로 출력하지 않음
         sb.append("────────────────────────");
         return sb.toString();
     }
 
     // ===================== 공통 유틸 =====================
 
-    /**
-     * 서버별명(nickName)이 있으면 사용하고,
-     * 없거나 공백이면 userName 을 사용하는 공통 유저명 처리
-     */
     private String resolveUserName(VoiceChannelLog log) {
         return Optional.ofNullable(log.getNickName())
             .filter(s -> !s.isBlank())
             .orElse(log.getUserName());
     }
 
-    /**
-     * 총 초(second)를 "X시간 Y분 Z초" 형태로 예쁘게 변환
-     */
     private String prettyDuration(long totalSeconds) {
         long hours = totalSeconds / 3600;
         long minutes = (totalSeconds % 3600) / 60;
@@ -370,7 +349,6 @@ public class RecordManager {
         return String.format("%d초", seconds);
     }
 
-    // 요일 한글 라벨
     private String dayLabel(DayOfWeek dow) {
         switch (dow) {
             case MONDAY: return "월";
@@ -395,10 +373,14 @@ public class RecordManager {
     }
 
     private List<LocalDateTime> getWeekRange() {
-        LocalDate start = LocalDate.now().with(DayOfWeek.MONDAY);
+        LocalDate now = LocalDate.now();
+        // 월요일 기준으로 이번 주 시작일 계산
+        LocalDate startOfWeek = now.minusDays(now.getDayOfWeek().getValue() - DayOfWeek.MONDAY.getValue());
+        LocalDate endOfWeek = startOfWeek.plusDays(6);
+
         return List.of(
-            start.atStartOfDay(),
-            start.plusDays(6).atTime(23, 59, 59)
+            startOfWeek.atStartOfDay(),
+            endOfWeek.atTime(23, 59, 59)
         );
     }
 

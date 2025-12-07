@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -79,13 +78,21 @@ public class RecordManager {
             return periodName + " 기간 동안 기록이 없습니다.";
         }
 
+        // nickName 이 null/빈 문자열이면 userName으로 대체해서 그룹핑
         Map<String, Long> userDurations = logs.stream()
             .collect(Collectors.groupingBy(
-                VoiceChannelLog::getNickName,
+                log -> {
+                    String key = Optional.ofNullable(log.getNickName())
+                        .filter(s -> !s.isBlank())
+                        .orElse(log.getUserName());   // ✅ fallback
+                    return key;
+                },
                 Collectors.summingLong(VoiceChannelLog::getDuration)
             ));
 
+        // (원하면 내림차순 정렬도 가능)
         return userDurations.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .map(entry -> formatDuration(entry.getKey(), entry.getValue()))
             .collect(Collectors.joining(
                 "\n", periodName + " 기간 내 기록:\n", ""
@@ -98,7 +105,6 @@ public class RecordManager {
         long seconds = totalSeconds % 60;
         return String.format("%s님이 총 %d시간 %d분 %d초 동안 머물렀습니다.", user, hours, minutes, seconds);
     }
-
 
     private String formatLogsByRange(String label, List<LocalDateTime> range, Optional<String> userNameOpt) {
         LocalDateTime start = range.get(0);

@@ -66,7 +66,7 @@ public class VoiceChannelTracker extends ListenerAdapter {
 
                 if (textChannel != null) {
                     textChannel.sendMessage(
-                        displayName + "님이 `" + joinedChannel.getName() + "` 채널에 입장했습니다."
+                        " \uD83D\uDFE2" + " " + displayName + "님이 `" + joinedChannel.getName() + "` 채널에 입장했습니다."
                     ).queue();
                 }
             }
@@ -104,7 +104,8 @@ public class VoiceChannelTracker extends ListenerAdapter {
                 // 텍스트 채널에 메시지 출력
                 if (textChannel != null) {
                     StringBuilder sb = new StringBuilder();
-                    sb.append(displayName)
+                    sb.append("\uD83D\uDD34")
+                        .append(displayName)
                         .append("님이 `").append(leftChannel.getName()).append("` 채널에서 퇴장했습니다.\n")
                         .append("머문 시간: ");
                     if (hours > 0) sb.append(hours).append("시간 ");

@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class DailySummaryService {
@@ -43,11 +44,11 @@ public class DailySummaryService {
         // 어제의 로그 가져오기
         List<VoiceChannelLog> logs = repository.findAllLogsBetween(startOfDay, endOfDay);
         if (logs.isEmpty()) {
-            textChannel.sendMessage("어제의 기록이 없습니다.").queue();
+            textChannel.sendMessage("⚠️ 어제의 기록이 없습니다.").queue();
             return;
         }
 
-        // 로그 요약 생성 및 전송 (서버별명 기준)
+        // 로그 요약 생성 및 전송 (서버별명 기준, 전체 요약)
         String summary = formatLogsSummed(logs, "어제");
         textChannel.sendMessage(summary).queue();
     }
@@ -56,38 +57,47 @@ public class DailySummaryService {
         return jda.getTextChannelsByName(channelName, true).stream().findFirst().orElse(null);
     }
 
-    // 🔹 nickName(서버별명) + 채널명 기준으로 머문 시간 합산
+    /**
+     * 어제 로그들을 "유저별 총합"으로 모아서
+     * 📊 **어제 전체 공부 기록 요약**
+     * 이런 형태의 문자열로 만들어 줌.
+     */
     private String formatLogsSummed(List<VoiceChannelLog> logs, String periodName) {
         if (logs.isEmpty()) {
-            return periodName + " 기간 동안 기록이 없습니다.";
+            return "⚠️ " + periodName + " 기록이 없습니다.";
         }
 
-        Map<String, Map<String, Long>> userChannelDurations = new HashMap<>();
+        // 닉네임 기준으로 합산 (없으면 userName으로 fallback)
+        Map<String, Long> userDurations = new HashMap<>();
         for (VoiceChannelLog log : logs) {
-            String serverNickName = log.getNickName();     // 서버별명
-            String channelName = log.getChannelName();
+            String name = Optional.ofNullable(log.getNickName())
+                .filter(s -> !s.isBlank())
+                .orElse(log.getUserName());
 
-            userChannelDurations
-                .computeIfAbsent(serverNickName, k -> new HashMap<>())
-                .merge(channelName, log.getDuration(), Long::sum);
+            userDurations.merge(name, log.getDuration(), Long::sum);
         }
 
-        if (userChannelDurations.isEmpty()) {
-            return periodName + " 기간 동안 기록이 없습니다.";
-        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("📊 **").append(periodName).append(" 전체 공부 기록 요약**\n\n");
+        sb.append("🧑‍🤝‍🧑 사용자별 기록\n");
+        sb.append("────────────────────────\n");
 
-        StringBuilder response = new StringBuilder(periodName + " 기록 요약:\n");
-        userChannelDurations.forEach((serverNickName, channelDurations) -> {
-            channelDurations.forEach((channelName, totalDuration) -> {
-                String formattedDuration = formatDuration(totalDuration);
-                response.append(String.format(
-                    "%s님이 `%s` 채널에서 %s 머물렀습니다.\n",
-                    serverNickName, channelName, formattedDuration
-                ));
+        userDurations.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .forEach(entry -> {
+                String user = entry.getKey();
+                long totalSeconds = entry.getValue();
+                sb.append("• ")
+                    .append(user)
+                    .append(" — ")
+                    .append(formatDuration(totalSeconds))
+                    .append("\n");
             });
-        });
 
-        return response.toString();
+        sb.append("────────────────────────");
+        // 📌 "전체 합계" 줄은 넣지 않음 (요청사항 반영)
+
+        return sb.toString();
     }
 
     private String formatDuration(long seconds) {
@@ -95,6 +105,12 @@ public class DailySummaryService {
         long minutes = (seconds % 3600) / 60;
         long secs = seconds % 60;
 
-        return String.format("%d시간 %d분 %d초", hours, minutes, secs);
+        if (hours > 0) {
+            return String.format("%d시간 %d분 %d초", hours, minutes, secs);
+        }
+        if (minutes > 0) {
+            return String.format("%d분 %d초", minutes, secs);
+        }
+        return String.format("%d초", secs);
     }
 }

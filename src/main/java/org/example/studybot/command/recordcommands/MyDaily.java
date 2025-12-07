@@ -22,7 +22,7 @@ public class MyDaily implements RecordCommands {
 
     @Override
     public String execute(String displayName, String userName) {
-        return manager.getDailyLogs(userName);
+        return manager.getDailyLogs(displayName);
     }
 }
 

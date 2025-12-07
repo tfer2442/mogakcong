@@ -22,7 +22,7 @@ public class MyMonthly implements RecordCommands {
 
     @Override
     public String execute(String displayName, String userName) {
-        return manager.getMonthlyLogs(userName);
+        return manager.getMonthlyLogs(displayName);
     }
 }
 

@@ -22,7 +22,7 @@ public class MyWeekly implements RecordCommands {
 
     @Override
     public String execute(String displayName, String userName) {
-        return manager.getWeeklyLogs(userName);
+        return manager.getWeeklyLogs(displayName);
     }
 }
 

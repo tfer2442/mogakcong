@@ -106,13 +106,31 @@ public class RecordManager {
         return String.format("%s님이 총 %d시간 %d분 %d초 동안 머물렀습니다.", user, hours, minutes, seconds);
     }
 
+    // RecordManager.java
+
     private String formatLogsByRange(String label, List<LocalDateTime> range, Optional<String> userNameOpt) {
         LocalDateTime start = range.get(0);
         LocalDateTime end = range.get(1);
 
-        List<VoiceChannelLog> logs = userNameOpt
-            .map(userName -> repository.findLogsBetween(start, end, userName))
-            .orElseGet(() -> repository.findAllLogsBetween(start, end));
+        // 1) 우선 해당 기간의 전체 로그를 가져온다.
+        List<VoiceChannelLog> logs = repository.findAllLogsBetween(start, end);
+
+        // 2) userNameOpt 가 들어온 경우, "서버별명" 기준으로 필터링
+        if (userNameOpt.isPresent()) {
+            String targetName = userNameOpt.get();
+
+            logs = logs.stream()
+                .filter(log -> {
+                    // nickName 이 비어있으면 userName 사용
+                    String key = Optional.ofNullable(log.getNickName())
+                        .filter(s -> !s.isBlank())
+                        .orElse(log.getUserName());
+
+                    // key 가 서버별명과 동일한지 비교
+                    return key.equals(targetName);
+                })
+                .collect(Collectors.toList());
+        }
 
         return formatLogsSummed(logs, label);
     }

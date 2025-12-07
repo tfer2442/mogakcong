@@ -70,7 +70,7 @@ public class StudyBotDiscordListener extends ListenerAdapter {
                 return;
             }
 
-            String returnMessage = commandHandler.handle(cmd, displayName, user.getName());
+            String returnMessage = commandHandler.handle(cmd, displayName, displayName);
             textChannel.sendMessage(returnMessage).queue();
         }
     }
@@ -86,7 +86,7 @@ public class StudyBotDiscordListener extends ListenerAdapter {
             String nickname = member != null ? member.getNickname() : null;
             String displayName = nickname != null ? nickname : event.getUser().getName();
 
-            String returnMessage = commandHandler.handle(selected, displayName, event.getUser().getName());
+            String returnMessage = commandHandler.handle(selected, displayName, displayName);
 
             event.reply(returnMessage).queue(); // 답장 먼저
             event.getMessage().delete().queue(); // 드롭다운 포함된 원본 메시지 삭제

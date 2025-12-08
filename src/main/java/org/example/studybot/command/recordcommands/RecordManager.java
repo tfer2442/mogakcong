@@ -231,7 +231,7 @@ public class RecordManager {
                         continue;
                     }
 
-                    sb.append("  - ")
+                    sb.append("• ")
                         .append(dayLabel(dow))
                         .append(": ")
                         .append(prettyDuration(sec))

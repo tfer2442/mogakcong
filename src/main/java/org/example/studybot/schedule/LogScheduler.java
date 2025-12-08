@@ -15,6 +15,7 @@ public class LogScheduler {
 
     @Scheduled(cron = "*/10 * * * * *")
     public void sendDailySummary() {
+        log.info(">>> [LogScheduler] sendDailySummary 호출됨");
         dailySummaryService.generateAndSendDailySummary();
     }
 }

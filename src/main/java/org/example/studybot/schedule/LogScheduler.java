@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 public class LogScheduler {
     private final DailySummaryService dailySummaryService;
 
-    @Scheduled(cron = "0 1 0 * * *")
+    @Scheduled(cron = "*/10 * * * * *")
     public void sendDailySummary() {
         dailySummaryService.generateAndSendDailySummary();
     }

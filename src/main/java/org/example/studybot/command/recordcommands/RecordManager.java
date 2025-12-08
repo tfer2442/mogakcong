@@ -223,7 +223,7 @@ public class RecordManager {
                 Map<DayOfWeek, Long> days = userDayDurations.get(user);
 
                 sb.append("────────────────────────\n");
-                sb.append("**").append(user).append("**\n");
+                sb.append("**").append(user).append("**\n\n");
 
                 for (DayOfWeek dow : WEEK_ORDER) {
                     Long sec = days.get(dow);

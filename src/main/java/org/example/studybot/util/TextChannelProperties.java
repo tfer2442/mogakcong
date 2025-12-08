@@ -9,11 +9,21 @@ public class TextChannelProperties {
 
     private String targetChannelName;
 
+    private String summaryChannelName;
+
     public String getTargetChannelName() {
         return targetChannelName;
     }
 
     public void setTargetChannelName(String targetChannelName) {
         this.targetChannelName = targetChannelName;
+    }
+
+    public String getSummaryChannelName() {
+        return summaryChannelName;
+    }
+
+    public void setSummaryChannelName(String summaryChannelName) {
+        this.summaryChannelName = summaryChannelName;
     }
 }

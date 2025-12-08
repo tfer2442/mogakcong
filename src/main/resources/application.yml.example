@@ -24,4 +24,8 @@ voice-channel:
   target-channel-name: // 디스코드 음성 채널 이름
 
 text-channel:
-  target-channel-name: // 디스코드 공부 기록 채널 이름
+  # 입퇴장 로그용 채널 (VoiceChannelTracker에서 사용)
+  target-channel-name: "📘공부-기록"
+
+  # 📊 일간/주간/월간 통계용 채널 (DailySummaryService에서 사용)
+  summary-channel-name: "📊공부-통계"

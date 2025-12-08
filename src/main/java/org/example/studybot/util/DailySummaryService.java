@@ -40,11 +40,15 @@ public class DailySummaryService {
         LocalDateTime startOfDay = yesterday.atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1).minusSeconds(1);
 
-        // Discord 채널 가져오기
-        TextChannel textChannel = findTextChannel(textChannelProperties.getTargetChannelName());
+        // 1) 요약 채널 이름이 설정돼 있으면 그걸 우선 사용, 없으면 기존 target 사용
+        String channelName = Optional.ofNullable(textChannelProperties.getSummaryChannelName())
+            .filter(s -> !s.isBlank())
+            .orElse(textChannelProperties.getTargetChannelName());
+
+        // 2) 선택된 이름/ID로 텍스트 채널 찾기
+        TextChannel textChannel = findTextChannel(channelName);
         if (textChannel == null) {
-            System.err.println("[DailySummaryService] 채널을 찾을 수 없습니다. name=" +
-                textChannelProperties.getTargetChannelName());
+            System.err.println("[DailySummaryService] 채널을 찾을 수 없습니다. name=" + channelName);
             return;
         }
 

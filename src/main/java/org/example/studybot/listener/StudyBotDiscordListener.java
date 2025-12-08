@@ -1,6 +1,7 @@
 package org.example.studybot.listener;
 
 import org.example.studybot.command.CommandHandler;
+import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,11 +18,12 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 
+@Component
 @RequiredArgsConstructor
 @Slf4j
 public class StudyBotDiscordListener extends ListenerAdapter {
 
-    private CommandHandler commandHandler;
+    private final CommandHandler commandHandler;
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {

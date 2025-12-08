@@ -140,18 +140,20 @@ public class DailySummaryService {
         return String.format("%d초", secs);
     }
 
-    /**
-     * 채널 이름(or ID) 으로 TextChannel 찾는 유틸
-     * 기존 DailySummaryService 에 있던 패턴 그대로 재구현
-     */
     private TextChannel findTextChannel(String nameOrId) {
-        // ID 로 먼저 시도
-        TextChannel byId = jda.getTextChannelById(nameOrId);
-        if (byId != null) {
-            return byId;
+        if (nameOrId == null || nameOrId.isBlank()) {
+            return null;
         }
 
-        // 이름으로 검색 (여러 개면 첫 번째)
+        // 1) 숫자로만 이루어진 경우에만 "ID" 로 시도
+        if (nameOrId.chars().allMatch(Character::isDigit)) {
+            TextChannel byId = jda.getTextChannelById(nameOrId);
+            if (byId != null) {
+                return byId;
+            }
+        }
+
+        // 2) 그 외에는 "이름" 으로 검색
         return jda.getTextChannelsByName(nameOrId, true).stream()
             .findFirst()
             .orElse(null);

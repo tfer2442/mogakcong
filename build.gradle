@@ -31,7 +31,7 @@ dependencies {
     // runtimeOnly 'com.h2database:h2'
 
     // 디스코드 JDA
-    implementation 'net.dv8tion:JDA:5.0.0-beta.5'
+    implementation 'net.dv8tion:JDA:6.1.2'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

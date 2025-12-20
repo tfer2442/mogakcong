@@ -1,7 +1,9 @@
-package org.example.studybot.util;
+package org.example.studybot.util.summary;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+
+import org.example.studybot.util.TextChannelProperties;
 import org.example.studybot.voicechannel.VoiceChannelLog;
 import org.example.studybot.voicechannel.VoiceChannelLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
